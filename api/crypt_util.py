@@ -2,7 +2,7 @@ import hashlib
 import os
 from time import gmtime, strftime
 import datetime
-import random
+from random import SystemRandom
 
 # Time calculations from http://stackoverflow.com/a/11111177/364485
 def unix_time(dt):
@@ -21,7 +21,7 @@ def generate_salt( uuid ):
   return m.hexdigest()
 
 def generate_challenge():
-  return str( unix_time( datetime.datetime.now() )) + str( random.random() )
+  return str( unix_time( datetime.datetime.now() )) + str( SystemRandom().random() )
 
 def validate_nonce( nonce, challenge ):
   m = hashlib.sha256()
