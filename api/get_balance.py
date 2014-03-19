@@ -40,7 +40,7 @@ def get_btc_balances( addr ):
   balances = {}
   balances[ 'symbol' ] = 'BTC'
   out, err = run_command( 'sx balance -j ' + addr )
-  if err != None:
+  if err is not None:
     return None, err
   elif out == '':
     return None, 'No bitcoin balance available.  Invalid address?: ' + addr
@@ -63,14 +63,14 @@ def get_balance_response(request_dict):
   addr = re.sub(r'\W+', '', addr) #check alphanumeric
 
   address_data, err = get_msc_balances( addr )
-  if err != None:
+  if err is not None:
     address_data = {}
     address_data[ 'address' ] = addr
     address_data[ 'balance' ] = []
 
   bitcoin_balances, err = get_btc_balances( addr )
 
-  if err == None:
+  if err is None:
     for i in xrange(0,len( bitcoin_balances )):
       address_data[ 'balance' ].append( bitcoin_balances[i] )
 

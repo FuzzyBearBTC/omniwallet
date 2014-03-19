@@ -138,7 +138,7 @@ def login():
 # Utility Functions
 def failed_challenge(pow_challenge, nonce, difficulty):
   pow_challenge_response = ws.hashlib.sha256(pow_challenge + nonce).hexdigest()
-  return pow_challenge_response[-len(difficulty):] != difficulty
+  return pow_challenge_response.endswith(difficulty)
 
 def write_wallet(uuid, wallet):
   filename = data_dir_root + '/wallets/' + uuid + '.json'

@@ -32,7 +32,7 @@ def general_handler(environ, start_response, response_dict_to_response_func):
             return response_with_error(start_response, environ, 'Bad urlparse')
 
         (response, error)=response_dict_to_response_func(response_dict)
-        if error != None:
+        if error is not None:
             return response_with_error(start_response, environ, error)
 
         headers = [('Content-type', 'application/json')]

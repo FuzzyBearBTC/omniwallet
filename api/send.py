@@ -11,14 +11,14 @@ def send_form_response(response_dict):
     expected_fields=['from_address', 'to_address', 'amount', 'currency', 'fee']
     # if marker is True, send dust to marker (for payments of sells)
     for field in expected_fields:
-        if not response_dict.has_key(field):
+        if field not in response_dict:
             info('No field '+field+' in response dict '+str(response_dict))
             return (None, 'No field '+field+' in response dict '+str(response_dict))
         if len(response_dict[field]) != 1:
             info('Multiple values for field '+field)
             return (None, 'Multiple values for field '+field)
           
-    if response_dict.has_key( 'pubKey' ) and is_pubkey_valid( response_dict['pubKey'][0]):
+    if 'pubKey' in response_dict and is_pubkey_valid( response_dict['pubKey'][0]):
         pubkey = response_dict['pubKey'][0]
         response_status='OK'
     else:
@@ -59,7 +59,7 @@ def send_form_response(response_dict):
         # if no marker, marker_addr stays None
         pass
 
-    if pubkey == None:
+    if pubkey is None:
         tx_to_sign_dict={'transaction':'','sourceScript':''}
         l=len(from_addr)
         if l == 66 or l == 130: # probably pubkey
@@ -79,7 +79,7 @@ def send_form_response(response_dict):
                     pubkey=from_pubkey
                     response_status='OK'
 
-    if pubkey != None:
+    if pubkey is not None:
         tx_to_sign_dict=prepare_send_tx_for_signing( pubkey, to_addr, marker_addr, currency_id, amount, btc_fee)
     else:
         # hack to show error on page
@@ -117,7 +117,7 @@ def prepare_send_tx_for_signing(from_address, to_address, marker_address, curren
         # normal bitcoin send
         required_value=satoshi_amount
         # if marker is needed, allocate dust for the marker
-        if marker_address != None:
+        if marker_address is not None:
             required_value+=1*dust_limit
     else:
         tx_type=0 # only simple send is supported
@@ -155,7 +155,7 @@ def prepare_send_tx_for_signing(from_address, to_address, marker_address, curren
         # amount to to_address
         # change to change
 
-        if marker_address != None:
+        if marker_address is not None:
             inputs_outputs+=' -o '+marker_address+':'+str(dust_limit)
         inputs_outputs+=' -o '+to_address+':'+str(satoshi_amount)
         

@@ -27,8 +27,8 @@ def generate_stats():
   address_count = 0 
   for wallet in wallet_files:
     try:
-      f = open("%s/%s" % (wallet_path, wallet))
-      accounts = json.loads(f.read())
+      with open("%s/%s" % (wallet_path, wallet)) as f:
+          accounts = json.loads(f.read())
       address_count += len(accounts["addresses"])
     except IOError as e:
       print "File could not be read for %s" % wallet

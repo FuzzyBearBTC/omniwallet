@@ -10,12 +10,12 @@ import random
 def sell_form_response(response_dict):
     expected_fields=['seller', 'amount', 'price', 'min_buyer_fee', 'fee', 'blocks', 'currency']
     for field in expected_fields:
-        if not response_dict.has_key(field):
+        if field not in response_dict:
             return (None, 'No field '+field+' in response dict '+str(response_dict))
         if len(response_dict[field]) != 1:
             return (None, 'Multiple values for field '+field)
             
-    if response_dict.has_key( 'pubKey' ) and is_pubkey_valid( response_dict['pubKey'][0]):
+    if 'pubKey' in response_dict and is_pubkey_valid( response_dict['pubKey'][0]):
         pubkey = response_dict['pubKey'][0]
         response_status='OK'
     else:
@@ -53,7 +53,7 @@ def sell_form_response(response_dict):
     bitcoin_amount_desired=int( price * int(amount) )
 
     #DEBUG info(['early days', seller, amount, satoshi_price, bitcoin_amount_desired, min_buyer_fee, fee, blocks, currency])
-    if pubkey != None:
+    if pubkey is not None:
         tx_to_sign_dict=prepare_sell_tx_for_signing( pubkey, amount, bitcoin_amount_desired, min_buyer_fee, fee, blocks, currency_id)
     else:
         tx_to_sign_dict={'transaction':'','sourceScript':''}

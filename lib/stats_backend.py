@@ -5,8 +5,8 @@ class StatsBackend:
   """
   This is a class to manage the Stats backend.
   """
-  def __init__(self, options={}):
-    if options == {}:
+  def __init__(self, options=None):
+    if options is None:
       if platform.system() == "Darwin": # For my local dev I need this hack
         options = {"db_path":"/tmp/stats.json"}
       else:
@@ -19,7 +19,7 @@ class StatsBackend:
   def increment(self, key):
     val = self.engine.get(key) 
 
-    if val == None:
+    if val is None:
       val = 0
 
     val += 1

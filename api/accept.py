@@ -13,12 +13,12 @@ data_dir_root = os.environ.get('DATADIR')
 def accept_form_response(response_dict):
     expected_fields=['buyer', 'amount', 'tx_hash', 'fee']
     for field in expected_fields:
-        if not response_dict.has_key(field):
+        if field not in response_dict:
             return (None, 'No field '+field+' in response dict '+str(response_dict))
         if len(response_dict[field]) != 1:
             return (None, 'Multiple values for field '+field)
 
-    if response_dict.has_key( 'pubKey' ) and is_pubkey_valid( response_dict['pubKey'][0]):
+    if 'pubKey' in response_dict and is_pubkey_valid( response_dict['pubKey'][0]):
         pubkey = response_dict['pubKey'][0]
         response_status='OK'
     else:
@@ -41,7 +41,7 @@ def accept_form_response(response_dict):
     if float(fee)<0 or float( from_satoshi( fee ))>max_currency_value:
         return (None, 'Invalid fee')
 
-    if pubkey == None:
+    if pubkey is None:
         tx_to_sign_dict={'transaction':'','sourceScript':''}
         l=len(buyer)
         if l == 66 or l == 130: # probably pubkey
@@ -62,7 +62,7 @@ def accept_form_response(response_dict):
                     response_status='OK'
 
     #DEBUG info(['early days', buyer, amount, tx_hash, fee])
-    if pubkey != None:
+    if pubkey is not None:
         tx_to_sign_dict=prepare_accept_tx_for_signing( pubkey, amount, tx_hash, fee )
     else:
         # minor hack to show error on page
