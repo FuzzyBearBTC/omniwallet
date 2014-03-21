@@ -4,13 +4,13 @@
 
 [from wiki.mastercoin.org]
 Mastercoin is both a new type of currency (MSC) and a platform. It is a new protocol layer 
-running on top of bitcoin like HTTP runs on top of TCP/IP. Its purpose is to build upon the 
-core Bitcoin protocol and add new advanced features, with a focus on a straight-forward and 
-easy to understand implementation which allows for analysis and its rapid development. 
+Running on top of bitcoin like HTTP runs on top of TCP/IP. Its purpose is to build upon the 
+Core Bitcoin protocol and add new advanced features, with a focus on a straight-forward and 
+Easy to understand implementation which allows for analysis and its rapid development. 
 
 ## What is Omniwallet?
 
-Omniwallet is a new type of web wallet, that combines security, ease of use, multi-currency support, and is completely open source from the ground up (up to the deplomeny scripts!)
+Omniwallet is a new type of web wallet, that combines security, ease of use, multi-currency support, and is completely open source from the ground up (up to the deployment scripts!)
 
 It currently supports Bitcoin and Mastercoin, and will support Mastercoin-derived currency in the future. In addition, support for other blockchains is a high priority for us - you will be able to store Litecoins, Peercoins, and other alts on the same highly secure web wallet.
 
@@ -73,7 +73,7 @@ Find this section near the beginning of /etc/nginx/sites-available/default:
 ```
 Change the ``root`` directive to reflect the location of your omniwallet codebase (actually the www directory within that codebase).
 
-Make sure you have uglifyjs (Note that there are a couple flavors of this available - you need the ``uglifyjs`` executable, which is included in the ``uglify-js`` NPM module - NOT the ``uglifyjs`` module!
+Make sure you have uglifyjs (Note that there are a couple flavours of this available - you need the ``uglifyjs`` executable, which is included in the ``uglify-js`` NPM module - NOT the ``uglifyjs`` module!
 ```
 sudo npm install -g uglify-js
 ```
@@ -95,7 +95,7 @@ sudo service nginx start
 ```
 Using the config included, nginx will launch an HTTP server on port 80.
 
-Set an environment variable containing a secret passphrase - this is used to generate salts for indivdual user IDs, and it needs to be both secret AND not change.
+Set an environment variable containing a secret passphrase - this is used to generate salts for individual user IDs, and it needs to be both secret AND not change.
 ```
 export OMNIWALLET_SECRET="DontTellAnyoneThis"
 ```
@@ -438,7 +438,7 @@ $.post('/wallet/validateaddr/', dataToSend, function (data) {}).fail( function()
 var dataToSend = { seller: from_address, pubKey: pubKey, amount: amount, price: price, min_buyer_fee: min_buyer_fee, fee: fee, blocks: blocks, currency: currency };
 $.post('/v1/transaction/sell/', dataToSend, function (data) {
 
-	//data should have fields sourceScript and transaction\
+	//data should have fields, sourceScript and transaction\
 	$('#sourceScript').val(data.sourceScript);
 	$('#transactionBBE').val(data.transaction);
 
@@ -548,7 +548,7 @@ Resulting ``data``:
 }
 ```
 
-### Get Detailed information about an offer
+### Get detailed information about an offer
 ```
 	var postData = { 
 		type: 'TRANSACTIONBID',
