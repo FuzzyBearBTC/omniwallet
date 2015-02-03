@@ -1,178 +1,547 @@
 //global services go here
-angular.module( 'omniwallet' ).factory('userService', ['$rootScope', '$http', function ($rootScope, $http) {
+angular.module('omniwallet').factory('propertiesService',['$http',function($http){
   var service = {
-    data: {
-      wallet : {},
-      loggedIn: false
-    },
-
-    login: function(wallet) {
-      service.data.wallet = wallet;
-      service.data.loggedIn = true;
-      service.saveSession();
-    },
-
-    logout: function() {
-      service.data.loggedIn = false;
-      service.data.wallet = {}
-      localStorage.clear();
-    },
-
-    addAddress: function( address, privKey ) {
-      for( var i in service.data.wallet.addresses )
-      {
-        if( service.data.wallet.addresses[i].address == address )
-        {
-          service.data.wallet.addresses[i].privkey = privKey;
-          service.saveSession();
-          return;
-        }
-      }
-      service.data.wallet.addresses.push( {
-        "address": address,
-        "privkey": privKey
-      });
-      service.data.loggedIn = true;
-      service.saveSession();
-    },
-
-    getAddress: function(address) {
-      for(var i in service.data.wallet.addresses) {
-        if(service.data.wallet.addresses[i].address == address) {
-          return service.data.wallet.addresses[i];
-        }
-      }
-    },
-
-    getAllAddresses: function () {
-      return service.data.wallet.addresses;
-    },
-
-    getWallet: function() {
-      return service.data.wallet;
-    },
-
-    getUUID: function() {
-      return service.data.wallet.uuid;
-    },
-
-    removeAddress: function( address ) {
-      for( var i=0; i<service.data.wallet.addresses.length; i++ )
-        if( service.data.wallet.addresses[i].address == address )
-        {
-          service.data.wallet.addresses.splice( i, 1 );
-          service.saveSession();
-          return;
-        }
-    },
-
-    syncWallet: function() {
-      // Strange serialization effects, stringifying wallet initially
-      var postData = {
-        type: 'SYNCWALLET',
-        wallet: JSON.stringify(service.data.wallet)
+    list : function(ecosystem) {
+      var url = '/v1/properties/list';
+      var data = {
+        ecosystem: ecosystem
       };
-      return $http({
-        url: '/v1/user/wallet/sync/',
-        method: 'POST',
-        data: postData,
-        headers: {'Content-Type': 'application/json'}
-      })
+      var promise = $http.post(url, data);
+      return promise;
     },
-
-    saveSession: function () {
-      localStorage["OmniWallet"] = angular.toJson(service.data);
-      service.syncWallet().success(function() { console.log("Success saving"); });
+    
+    loadCategories:function(ecosystem) {
+      var url = '/v1/properties/categories';
+      var data = {
+        ecosystem: ecosystem
+      };
+      var promise = $http.post(url, data);
+      return promise;
     },
-    restoreSession: function() {
-      if( localStorage[ "OmniWallet" ])
-        service.data = angular.fromJson(localStorage["OmniWallet"]);
+  
+    loadSubcategories:function(ecosystem,category) {
+      var url = '/v1/properties/subcategories';
+      var data = {
+        ecosystem: ecosystem,
+        category: category
+      };
+      var promise = $http.post(url, data);
+      return promise;
     }
   };
-
-  // $rootScope.$watch('userService.data', function(newVal, oldVal) {
-  //   console.log("watched");
-  //   $rootScope.$broadcast('savestate');
-  // }, true);
-  $rootScope.$on("savestate", service.saveSession);
-  $rootScope.$on("restorestate", service.restoreSession);
-
-  service.restoreSession();
-
+  
   return service;
+  
 }]);
 
-angular.module( 'omniwallet' ).factory( 'appraiser', ['$rootScope', '$http', function ( $rootScope, $http ) {
+angular.module('omniwallet').factory('walletTransactionService',['$http',function($http){
+  var service = {
+    pushSignedTransaction : function(signedTransaction) {
+      var url = '/v1/transaction/pushtx/';
+      var data = {
+        signedTransaction: signedTransaction
+      };
+      var promise = $http.post(url, data);
+      return promise;
+    },
+    
+    getUnsignedTransaction : function(type, data){
+      if (type == 0 && data.currency_identifier == 0){
+        btc_send_data = {
+          'from_address':data.pubkey, 'to_address':data.transaction_to, 'amount':data.amount_to_transfer, 'currency':'BTC', 'fee':data.fee,'marker': (data.marker || false), 'testnet': (TESTNET || false)
+        };
+        var url = '/v1/transaction/send/';
+        
+        var promise = $http.post(url, btc_send_data);
+        return promise;
+      }else{
+        var url = '/v1/transaction/getunsigned/'+type;
+        
+        var promise = $http.post(url, data);
+        return promise;
+      } 
+    },
 
-  // Rewire to use localstorage 
-  function AppraiserService() {
-    this.conversions = {};
-    var self = this;
-    function BtcUpdateLoop() {
-      self.updateBtcValue( function() {
-        setTimeout( BtcUpdateLoop, 30000 );
-      } );
-    }
-    function MscUpdateLoop() {
-      self.updateMscValue( function() {
-        setTimeout( MscUpdateLoop, 600000 );
-      } );
-    }
-    BtcUpdateLoop();
-    MscUpdateLoop();
-  };
-  AppraiserService.prototype.updateBtcValue = function( callback ) {
-    var self = this;
-    $http.get( 'https://api.bitcoinaverage.com/all' ).then( function( result ) {
-      // Store these things internally as the value of a satoshi.
-      self.conversions.BTC = result.data.USD.averages.last / 100000000;
-      $rootScope.$emit( 'APPRAISER_VALUE_CHANGED', 'BTC' );
-      callback();
-    }, function( error ) {
-      console.log( error );
-      callback();
-    });
-  };
-  AppraiserService.prototype.updateMscValue = function( callback ) {
-    var self = this;
-    $http.get( 'https://masterxchange.com/api/trades.php' ).then( function( result ) {
-      var volume = 0;
-      var sum = 0;
+    getArmoryUnsigned : function(unsignedHex,pubKey){
+      var url = '/v1/armory/getunsigned';
+      var data = {
+        'unsigned_hex': unsignedHex,
+        'pubkey': pubKey
+      };
+      var promise = $http.post(url, data);
+      return promise;
+    },
+    
+    getArmoryRaw : function(signedHex){
+      var url = '/v1/armory/getrawtransaction';
+      var data = {
+        'signed_hex': signedHex
+      };
+      var promise = $http.post(url, data);
+      return promise;
+    },
 
-      for( var i=0; i<result.data.length; i++ )
-      {
-        volume += parseFloat( result.data[i].amount );
-        sum += parseFloat( result.data[i].amount ) * parseFloat( result.data[i].price );
+    validAddress:function(addr) {
+      try {
+        var checkValid = new Bitcoin.Address(addr);
+        return true;
+      } catch (e) {
+        return false;
       }
-
-      self.conversions.MSC = sum / volume;
-      $rootScope.$emit( 'APPRAISER_VALUE_CHANGED', 'MSC' );
-      callback();
-    }, function( error ) {
-      console.log( error );
-      callback();
-    });
-  };
-  AppraiserService.prototype.getValue = function( amount, symbol ) {
-    if( symbol == 'TMSC' )
-      return 0;
-    else if( symbol == 'BTC' )
-    {
-      if( this.conversions.BTC )
-        return this.conversions.BTC * amount;
-      else
-        return 'BTC Value Unavailable';
-    }
-    else
-    {
-      if( this.conversions.MSC )
-      {
-        return this.getValue( this.conversions.MSC * amount, 'BTC' );
-      }
-      else
-        return 'MSC Value Unavailable';
+    },
+  
+    getAddressData:function(address) {
+      console.log('Addr request 5');
+      var promise = $http.post('/v1/address/addr/', {
+        'addr': address
+      });
+  
+      return promise;
     }
   };
-
-  return new AppraiserService();
+  
+  return service;
+  
 }]);
+
+angular.module('omniwallet').factory('balanceService', ['$http', '$q', function($http, $q) {
+    var cache = [];
+    var service = {
+      balance: function(address) {
+        var currentTime = new Date().getTime();
+        if (cache[address] && (currentTime - cache[address].timestamp) < 60000)
+          return cache[address].deferred.promise; else {
+          var deferred = $q.defer();
+          cache[address] = {
+            deferred: deferred,
+            timestamp: currentTime
+          };
+          $http.post('/v1/address/addr/', {
+              'addr': address
+            })
+            .success(function(result) {
+              deferred.resolve({
+                data: result
+              });
+            }).error (function(error) {
+            deferred.resolve({
+              data: {
+                address: address,
+                balance: []
+              }
+            });
+          });
+          return deferred.promise;
+        }
+      }
+    };
+    return service;
+  }
+]);
+
+// angular.module('omniwallet').factory('userService', ['$rootScope', '$http', '$injector', '$q', '$idle', function($rootScope, $http, $injector, $q, $idle) {
+//     var service = {
+//       data: {
+//         walletKey: '',
+//         asymKey: {},
+//         wallet: {},
+//         walletMetadata: {
+//           currencies: []
+//         },
+//         loggedIn: false,
+//         disclaimerSeen: false
+//       },
+
+//       login: function(wallet, walletKey, asymKey, walletMetadata) {
+//         service.data.walletKey = walletKey;
+//         service.data.asymKey = asymKey;
+//         service.data.wallet = wallet;
+//         service.data.walletMetadata = walletMetadata || service.data.walletMetadata;
+//         service.data.loggedIn = true;
+//         service.UpdateLoop();
+        
+//         $idle.watch();
+//       },
+
+//       logout: function() {
+//         service.data.wallet = {};
+//         service.data.walletMetadata = {};
+//         service.data.loggedIn = false;
+//       },
+
+//       addAddress: function(address, privKey, pubKey) {
+//         for (var i in service.data.wallet.addresses) {
+//           if (service.data.wallet.addresses[i].address == address) {
+//             if(privKey)
+//               service.data.wallet.addresses[i].privkey = privKey;
+//             if(pubKey)
+//               service.data.wallet.addresses[i].pubkey = pubKey;
+//             return service.saveSession();
+//           }
+//         }
+
+//         service.data.wallet.addresses.push({
+//           "address": address,
+//           "privkey": privKey,
+//           "pubkey": pubKey 
+//         });
+        
+//         service.data.loggedIn = true;
+//         return service.saveSession().then(function(){
+//           service.updateCurrencies();
+//         });
+//       },
+
+//       getAddress: function(address) {
+//         for (var i in service.data.wallet.addresses) {
+//           if (service.data.wallet.addresses[i].address == address) {
+//             return service.data.wallet.addresses[i];
+//           }
+//         }
+//       },
+
+//       getAllAddresses: function() {
+//         return service.data.wallet.addresses;
+//       },
+      
+//       getAddressesWithPrivkey: function(addressFilter) {
+//         var addresses = service.data.wallet.addresses.filter(function(e) {
+//           return (e.privkey && e.privkey.length == 58);
+//         }).map(function(e){
+//           return e.address;
+//         });
+        
+//         if (addresses.length == 0)
+//           addresses = ['Could not find any addresses with attached private keys!'];
+//         else {
+          
+//           if(addressFilter){
+//             addresses = addresses.filter(function(e) {
+//               return addressFilter.indexOf(e) > -1;
+//             });
+//             if (addresses.length == 0)
+//               addresses = ['You have no addresses with a balance on the selected coin!'];
+//           }
+//         }
+        
+//         return addresses;
+//       },
+
+//       getAddressesWithPubkey: function(addressFilter) {
+//         var addresses = service.data.wallet.addresses.filter(function(e) {
+//           return e.pubkey != undefined;
+//         }).map(function(e){
+//           return e.address;
+//         });
+        
+//         if (addresses.length == 0)
+//           addresses = ['Could not find any addresses with attached private keys!'];
+//         else {
+          
+//           if(addressFilter){
+//             addresses = addresses.filter(function(e) {
+//               return addressFilter.indexOf(e) > -1;
+//             });
+//             if (addresses.length == 0)
+//               addresses = ['You have no addresses with a balance on the selected coin!'];
+//           }
+//         }
+        
+//         return addresses;
+//       },
+
+//       getTradableAddresses: function(addressFilter, offlineSupport){
+//         if(offlineSupport){
+//             var errors = ['You have no addresses with a balance on the selected coin!','Could not find any addresses with attached private keys!']
+//             var addresses = service.getAddressesWithPrivkey(addressFilter).concat(service.getAddressesWithPubkey(addressFilter)).filter(function(element){
+//               return errors.indexOf(element) === -1;
+//             });
+//             if (addresses.length == 0)
+//               addresses = ['Could not find any tradable addresses!'];
+            
+//             return addresses;
+//         }else
+//           return service.getAddressesWithPrivkey(addressFilter);
+//       },
+
+//       getCurrencies: function() {
+//         return service.data.walletMetadata.currencies || [];
+//       },
+
+//       getWallet: function() {
+//         return service.data.wallet;
+//       },
+
+//       getUUID: function() {
+//         return service.data.wallet.uuid;
+//       },
+
+//       getAsymKey: function() {
+//         return service.data.asymKey;
+//       },
+
+//       removeAddress: function(address) {
+//         for (var i = 0; i < service.data.wallet.addresses.length; i++)
+//           if (service.data.wallet.addresses[i].address == address) {
+//             service.data.wallet.addresses.splice(i, 1);
+//             service.saveSession();
+//             return;
+//         }
+//       },
+
+//       loggedIn: function() {
+//         return service.data.loggedIn;
+//       },
+
+//       UpdateLoop: function() {
+//         service.updateMetadata(function() {
+//           setTimeout(service.UpdateLoop, 300000);
+//         });
+//       },
+
+//       updateWallet: function() {
+//         var uuid = service.getUUID();
+//         return $http.get('/v1/user/wallet/challenge?uuid=' + uuid)
+//         .then(function(result) {
+//           var data = result.data;
+//           var encryptedWallet = CryptUtil.encryptObject(service.data.wallet, service.data.walletKey);
+//           var challenge = data.challenge;
+//           var signature = CryptUtil.createSignedObject(challenge, service.getAsymKey().privKey);
+
+//           return $http({
+//             url: '/v1/user/wallet/update',
+//             method: 'POST',
+//             data: {
+//               uuid: uuid,
+//               wallet: encryptedWallet,
+//               signature: signature
+//             }
+//           });
+//         });
+//       },
+
+//       updateCurrencies: function() {
+//         var addCurrencies = function(i) {
+//           if (i < service.data.wallet.addresses.length) {
+//             $injector.get('balanceService').balance(service.data.wallet.addresses[i].address).then(function(result) {
+//               result.data.balance.forEach(function(balanceItem) {
+//                 var address = service.data.wallet.addresses[i];
+//                 var tradable = ((address.privkey && address.privkey.length == 58) || address.pubkey) && balanceItem.value > 0;
+//                 var currency = null;
+//                 for (var j = 0; j < service.data.walletMetadata.currencies.length; j++) {
+//                   var currencyItem = service.data.walletMetadata.currencies[j];
+//                   if (currencyItem.symbol == balanceItem.symbol) {
+//                     currency = currencyItem;
+//                     if (currency.addresses().indexOf(service.data.wallet.addresses[i].address) == -1){
+//                      tradable ? currency.tradableAddresses.push(service.data.wallet.addresses[i].address) : currency.watchAddresses.push(service.data.wallet.addresses[i].address) ;
+//                      currency.tradable = currency.tradable || tradable;
+//                     }
+//                     break;
+//                   }
+//                 }
+//                 if (currency === null) {
+//                   if (balanceItem.symbol.substring(0, 2) == "SP") {
+//                     var propertyID = balanceItem.symbol.substring(2);
+//                     currency = {
+//                         id: propertyID,
+//                         symbol: balanceItem.symbol,
+//                         divisible: balanceItem.divisible,
+//                         tradableAddresses: tradable ? [service.data.wallet.addresses[i].address] : [],
+//                         watchAddresses: !tradable ? [service.data.wallet.addresses[i].address] : [],
+//                         addresses: function(){ return this.tradableAddresses.concat(this.watchAddresses); },
+//                         tradable:tradable
+//                       };
+//                     service.data.walletMetadata.currencies.push(currency);
+                    
+//                     $http.get('/v1/property/' + propertyID + '.json').then(function(result) {
+//                       var property = result.data[0];
+//                       currency["name"] = property.propertyName;
+//                       currency["property_type"] = property.formatted_property_type;
+//                     });
+//                   } else {
+//                     currency = {
+//                       id: balanceItem.symbol == "BTC" ? 0 : balanceItem.symbol == "MSC" ? 1 :balanceItem.symbol == "TMSC" ? 2 : null,
+//                       name: balanceItem.symbol,
+//                       symbol: balanceItem.symbol,
+//                       divisible: balanceItem.divisible,
+//                       tradableAddresses: tradable ? [service.data.wallet.addresses[i].address] : [],
+//                       watchAddresses: !tradable ? [service.data.wallet.addresses[i].address] : [],
+//                       addresses: function(){ return this.tradableAddresses.concat(this.watchAddresses); },
+//                       tradable:tradable
+//                     };
+//                     service.data.walletMetadata.currencies.push(currency);
+//                   }
+//                 }
+//               });
+//               addCurrencies(i + 1);
+//             });
+//           } else {
+// 	           $injector.get('appraiser').updateValues(function() {
+//                 console.log("Updated Currencies");
+//              });
+//           }
+//         };
+//         addCurrencies(0);
+//       },
+
+//       updateMetadata: function(callback) {
+//         service.updateCurrencies();
+//         callback();
+//       },
+
+//       saveSession: function() {
+//         return service.updateWallet().then(function(result) {
+//           console.log("Success saving");
+//         }, function(result) {
+//           console.log("Failure saving");
+//           location = location.origin + '/loginfs/' + service.getUUID()
+//           service.logout();
+//         });
+//       }
+//     };
+
+//     return service;
+//   }]);
+
+angular.module('omniwallet').factory('appraiser', ['$rootScope', '$http', '$q', '$injector', function($rootScope, $http, $q, $injector) {
+
+    function AppraiserService() {
+      this.conversions = {};
+      this.wallet = $injector.get('Wallet');
+      this.Account = $injector.get('Account');
+      var self = this;
+
+      function UpdateLoop() {
+        self.updateValues(function() {
+          setTimeout(UpdateLoop, 300000);
+        });
+      }
+
+      if (self.Account.loggedIn) { 
+        UpdateLoop();
+      } else {
+        cursym = "USD";
+      }
+    };
+
+    AppraiserService.prototype.updateValues = function(callback) {
+      var self = this;
+      var requests = [];
+      var coins = this.wallet.assets;
+      cursym = self.Account.getSetting("usercurrency");
+      var changed = false;
+      coins.forEach(function(coin) {
+        if (coin.symbol === 'BTC') {
+          symbol="BTC"+cursym;
+        } else {
+          symbol=coin.symbol;
+        }
+        requests.push(
+        $http.get('/v1/values/' + symbol + '.json').then(function(response) {
+          var currency = response.data[0];
+          if (currency.symbol == 'BTC') {
+            // Store these things internally as the value of a satoshi.
+            self.conversions.BTC = currency.price / 100000000;
+            changed = true
+          } else {
+            self.conversions[currency.symbol] = currency.price;
+            changed=true
+          }
+        }, function(error) {
+          console.log(error);
+        })
+        );
+      });
+      $q.all(requests).then(function(responses) {
+        if (changed)
+          $rootScope.$emit('APPRAISER_VALUE_CHANGED')
+        
+        if(callback)
+          callback();
+      });
+    };
+    AppraiserService.prototype.updateValue = function(callback, symbol) {
+      var self = this;      
+      if (symbol === 'BTC') {
+        usercur=symbol+cursym;
+      } else {
+        usercur=symbol
+      }
+      if (symbol === 'BTC' || this.conversions.BTC) {
+        $http.get('/v1/values/' + usercur + '.json').then(function(response) {
+          var currency = response.data[0];
+          if (currency.symbol == 'BTC') {
+            // Store these things internally as the value of a satoshi.
+            self.conversions.BTC = currency.price / 100000000;
+          } else if (currency.symbol) {
+            self.conversions[currency.symbol] = currency.price;
+          }
+          callback();
+        }, function(error) {
+          console.log(error);
+
+          self.conversions[symbol] = 0;
+          callback();
+        });
+      }
+      else {
+	this.updateValue(function() {
+          self.updateValue(callback, symbol);
+	}, 'BTC');
+      }
+    };
+    AppraiserService.prototype.getValue = function(amount, symbol, divisible) {
+      if (symbol == 'BTC') {
+        if (this.conversions.BTC)
+          return this.conversions.BTC * amount;
+        else
+          return 'BTC Value Unavailable';
+      } else {        
+        if (this.conversions.hasOwnProperty(symbol)) {
+          if (divisible)
+            return this.getValue(this.conversions[symbol] * amount, 'BTC', true);
+          else
+            return this.getValue(this.conversions[symbol] * amount * 100000000, 'BTC', true);
+        } else
+          return symbol + ' Value Unavailable';
+      }
+    };
+
+    return new AppraiserService();
+  }]);
+
+angular.module('omniwallet').factory('hashExplorer', function() {
+  var tx = '',
+    loc = '',
+    search = '',
+    getHash = function() {},
+    setHash = function() {};
+  return {
+    tx: tx,
+    loc: loc,
+    search: search,
+    setSearch: function(query) { this.search = query; },
+    setHash: function(tx) {
+      this.tx = JSON.stringify(tx);
+      this.loc = window.location.href.split('/').slice(-2).join('/');
+    }
+  };
+});
+
+angular.module('omniwallet').factory('browser', ['$window', function($window) {
+    var userAgent = $window.navigator.userAgent;
+
+    var browsers = {
+      chrome: /chrome/i,
+      safari: /safari/i,
+      firefox: /firefox/i,
+      ie: /internet explorer/i
+    };
+
+    for (var key in browsers) {
+      if (browsers[key].test(userAgent)) {
+        return key;
+      }
+    }
+  }]);
+

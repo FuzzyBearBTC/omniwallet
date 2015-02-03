@@ -3,43 +3,97 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta name="Description" content="Omniwallet&#8482; is a cryptocurrency web wallet that combines security, usability and meta-currency support.">
 
-    <title> Omniwallet </title>
+    <title> Omniwallet&#8482; - The Next Generation Wallet </title>
 
     <!-- thanks to joseph for the favicon -->
-    <link rel="shortcut icon" type="image/png" href="assets/img/MSCIcon.ICO">
-    
+    <link rel="shortcut icon" type="image/png" href="/assets/img/favicon.png">
+
     <noscript>
         Java Script has been disabled!
-        <meta http-equiv="refresh" content="0;url=javascript_required.html">
+        <meta content="0;url=javascript_required.html">
     </noscript>
 
     <link rel="stylesheet" href="/bower_components/bootstrap/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="/bower_components/bootstrap/dist/css/bootstrap-theme.min.css">
     <link rel="stylesheet" href="/theme.css">
 
+    <link href='https://fonts.googleapis.com/css?family=Gudea:400,400italic,700' rel='stylesheet' type='text/css'>
+
+    <!-- SocketIO 1.x.x not supported right now -->
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/0.9.16/socket.io.min.js"></script>
+    
     <script src="/bower_components/underscore/underscore.js"></script>
     <script src="/bower_components/jquery/dist/jquery.min.js"></script>
     <script src="/bower_components/angular/angular.js"></script>
     <script src="/bower_components/angular-route/angular-route.js"></script>
+    <script src="/bower_components/angular-translate/angular-translate.js"></script>
+    <script src="/bower_components/numeraljs/numeral.js"></script>
+    <script src="/bower_components/angular-numeraljs/src/angular-numeraljs.js"></script>
+    <script src="/bower_components/angular-idle/src/angular-idle.js"></script>
+    <script src="/bower_components/angular-password-strength/build/angular-password-strength.js"></script>
     <script src="/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
-    <script src="/bower_components/angular-bootstrap/ui-bootstrap.js"></script>
+    <script src="/bower_components/angular-bootstrap/ui-bootstrap.min.js"></script>
+    <script src="/bower_components/angular-bootstrap/ui-bootstrap-tpls.min.js"></script>
+    <script src="/bower_components/jsrsasign/jsrsasign-latest-all-min.js"></script>
+    <script src="/bower_components/forge/js/forge.min.js"></script>
     <script src="/bower_components/bitcoinjs-lib/build/bitcoinjs-lib.js"></script>
     <script src="/bower_components/d3/d3.min.js"></script>
     <script src="/bower_components/sjcl/sjcl.js"></script>
-    <script src="/bower_components/jsrsasign/jsrsasign-latest-all-min.js"></script>
     <script src="/bower_components/FileSaver/FileSaver.js"></script>
+    <script src="/bower_components/big.js/big.min.js"></script>
+    <script type="text/javascript" src="/bower_components/angular-re-captcha/angular-re-captcha.js"></script>
+    <script src="/js/config.js"></script>
     <script src="/js/app.js"></script>
+    <script src="/js/factories/AddressModelFactory.js"></script>
+    <script src="/js/factories/AssetModelFactory.js"></script>
+    <script src="/js/factories/TransactionModelFactory.js"></script>
+    <script src="/js/services/WalletService.js"></script>
+    <script src="/js/services/AccountService.js"></script>
+    <script src="/js/lang/en-US.js"></script>
+    <script src="/js/services/TransactionGenerationService.js"></script>
+    <script src="/js/services/TransactionManagerService.js"></script>
+    <script src="/js/services/ModalManagerService.js"></script>
+    <script src="/js/services/BalanceSocket.js"></script>
+    <script src="/js/services/AddressManagerService.js"></script>
+    <script src="/js/services/PropertyManagerService.js"></script>
+    <script src="/js/controllers/Wallet/OverviewController.js"></script>
     <script src="/js/directive.js"></script>
     <script src="/js/service.js"></script>
     <script src="/js/controller.js"></script>
+    <script src="/js/filter.js"></script>
     <script src="/js/LoginController.js"></script>
+    <script src="/js/TransactionGenerationController.js"></script>
+    <script src="/js/ExplorerController.js"></script>
     <script src="/js/WalletAddressesController.js"></script>
     <script src="/js/WalletController.js"></script>
-    <script src="/js/WalletTradeAssetsController.js"></script>
+    <script src="/js/WalletAssetsFormController.js"></script>
+    <script src="/js/WalletSendAssetsController.js"></script>
+    <script src="/js/WalletSellAssetsController.js"></script>
+    <script src="/js/WalletBuyAssetsController.js"></script>
     <script src="/js/CreateWalletController.js"></script>
     <script src="/js/AssetTypesController.js"></script>
+    <script src="/js/PropertyIssuanceController.js"></script>
+    <script src="/js/CrowdsaleIssuanceController.js"></script>
+    <script src="/js/add_address.js"></script>
     <script src="/js/cryptUtil.js"></script>
+    <script src="/js/cryptUtilAsync.js"></script>
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-53639435-1', 'auto');
+      ga('set', 'anonymizeIp', true);
+      ga('set', 'forceSSL', true);
+      ga('send', 'pageview');
+    </script>
+
   </head>
   <body>
     <div id="wrap">
@@ -47,13 +101,19 @@
          <div class="header">
            <div ng-include="templates['header']"></div> 
          </div>
-       <div class="middle row">
-            <div ng-view></div>
-        </div>
-          </div>
-        <div class="footer">
+         <div class="container middle row">
+           <div class="info info-custom info-dismissable" ng-hide="true">
+             <button type="button" class="close" data-dismiss="info" aria-hidden="true">&times;</button>
+             Omniwallet&#8482; is a cryptocurrency web wallet that combines security, usability and meta-currency support.
+           </div>
+         </div>
+           <div ng-view></div>
+         <br/><br />
+          <div class="row"></div>
+         <div class="footer">
           <div ng-include="templates['footer']"></div> 
-        </div>
+         </div>
+       </div>
       </div>
     </div>
   </body>

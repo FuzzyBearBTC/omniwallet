@@ -1,49 +1,51 @@
-function LoginControllerUUID($scope, $http, $location, $modalInstance, userService, uuid) {
+function LoginControllerUUID($injector, $scope, $http, $location, $modalInstance, $q, Account, uuid, $idle) {
   $scope.login = {
     uuid: uuid
   }
 
-  Login($scope, $http, $location, $modalInstance, userService);
+  Login($injector, $scope, $http, $location, $modalInstance, $q, Account, $idle);
 }
 
-function LoginController($scope, $http, $location, $modalInstance, userService) {
-  Login($scope, $http, $location, $modalInstance, userService);
+function LoginController($injector, $scope, $http, $location, $modalInstance, $q, Account, $idle) {
+  Login($injector, $scope, $http, $location, $modalInstance, $q, Account, $idle);
 }
 
 // Helper (Not sure if this can be fixed with providers)
-function Login($scope, $http, $location, $modalInstance, userService) {
+function Login($injector, $scope, $http, $location, $modalInstance, $q, Account, $idle) {
+  $scope.dismiss = $modalInstance.dismiss;
+  
+  $scope.loginInProgress = false;
+  $scope.login.title == undefined ? $scope.login.title = 'Login' : $scope.login.title;
+  $scope.login.button == undefined ? $scope.login.button = 'Open Wallet' : $scope.login.button;
+  
   $scope.open = function(login) {
-    var postData = {
-      type: 'RESTOREWALLET',
-      uuid: login.uuid
+    if ( Account.verifyUUID(login.uuid) == false ) {
+      $scope.missingUUID = true;
+      return 0;
     }
-    $http({
-        url: '/v1/user/wallet/restore/',
-        method: 'POST',
-        data: postData,
-        headers: {'Content-Type': 'application/json'}
-    })
-    .success(function (data, status, headers, config) {
-      console.log(data);
-      if(data.status == "MISSING") {
-        $scope.missingUUID = true;
-      } else {
-        var passwordHash = data.wallet.passwordHash;
-        var salt = data.wallet.salt;
-        var loginHash = Crypto.SHA256(login.password + salt);
 
-        if(loginHash == passwordHash) {
-          console.log(data.wallet);
-          userService.login(data.wallet);
-          $modalInstance.close();
+    $scope.loginInProgress = true;
+    $scope.missingUUID = false;
+    $scope.badPassword = false;
+    $scope.serverError = false;
+
+    if($scope.login.action == 'verify'){
+      Account.verify(login.uuid,login.password).then(function(){
+        $modalInstance.close(Account.wallet) //pass wallet as verification
+        $idle.watch();
+      },function(error){
+        $scope.loginInProgress=false;
+        angular.extend($scope,error);
+      });
+    } else {
+      Account.login(login.uuid,login.password).then(function(wallet){
+          $modalInstance.close()
           $location.path('/wallet');
-        } else {
-          $scope.badPassword = true;
-        }
-      }
-    })
-    .error(function(data, status, headers, config) {
-      $scope.serverError = true;
-    });
-  }
+          $idle.watch();
+      },function(error){
+	$scope.loginInProgress=false;
+        angular.extend($scope,error);
+      })
+    }   
+  };
 }

@@ -1,42 +1,32 @@
+<div datepicker-popup="" ng-model="h" hidden></div> <!-- initalize ui.bootstrap.datepicker (bad interaction with ng-route) --> 
+<timepicker ng-model="t" hidden></timepicker> <!-- initalize ui.bootstrap.timepicker (bad interaction with ng-route) -->
+<div tooltip=""></div> <!-- initalize ui.bootstrap.tooltip (bad interaction with ng-route) -->
+<progressbar hidden style="margin-top:10px" animate="false" value="0" type="success" max="100"></progressbar>
 <div class="sidecar col-xs-2" ng-controller="SidecarController" ng-init=setView('wallet')>
     <div ng-include="templates['sidecar']"></div>
 </div>
-
-<div class="col-xs-10" ng-controller="WalletController">
-  <script type="text/ng-template" id="overview.html">
-    <div class="panel panel-default">
-      <h3 class="text-center panel-body">Your Wallet Overview <small>{{ uuid }}</small></h3>
-    </div>
+<div class="col-xs-10" ng-controller="WalletOverviewController">
+  <div class="panel-default">
+    <div class="text-left panel-body om-title" >Overview</div>
+  </div>
+  <div ng-if="addrList.length == 0">
     <div class="alert alert-info alert-dismissable">
       <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-        <strong>Hey!</strong> This is the overview page, where you can get a broad look at your owned assets.
+        <strong>Welcome!</strong> We have set up a brand new wallet for you. You can use the links below to get started
     </div>
-    <div class="row">
-      <button ng-click="backupWallet()">Backup Wallet</button>
-    </div>
-
-    <div class="row" >
-      <div ng-controller="AssetTypesController" ng-init="showAssetTypes()" show-asset-types template="{{template}}">
-      </div>
-    </div>
-
-  </script>
-
-  <script type="text/ng-template" id="welcome.html">
-    <div class="panel panel-default">
-      <h3 class="text-center panel-body">Your Wallet Overview <small>{{ uuid }}</small></h3>
-    </div>
-    <div class="alert alert-info alert-dismissable">
+    <div class="alert alert-danger alert-dismissable">
       <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-        <strong>Welcome!</strong> We have set up a brand new wallet for you. Please save your login <a style="color:black;" href="/login/{{uuid}}">link</a> so you can come back here easily! 
+        <strong>Warning:</strong> You must <strong>save your login link: <a style="color:black; text-decoration:underline" href="{{loginLink}}">{{loginLink}}</a></strong> to return to your wallet.
     </div>
-    <div class="row">
-      <p>You can import existing addresses in <a href="/wallet/addresses">My Address</a></p>
-      <p>Or we can create a new address for you:</p>
-      <button class="btn btn-default" ng-click="openCreateAddressModal()">Create New Address</button>
+  </div>
+
+  <div class="row" ng-controller="AssetTypesController">
+
+    <h3  ng-init="isLoading=true" ng-show="isLoading" class="text-center">Updating...<img src="/assets/img/spinner.gif"></h3>
+    <div ng-hide="isLoading"><br /><br /><br /></div>   
+    <div ng-init="refresh();modalOpened=false" show-asset-types template="{{template}}">
+
+
     </div>
-
-  </script>
-
-  <div ng-include="currentView"></div>
-</div>
+  </div>
+ </div>

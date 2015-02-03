@@ -1,72 +1,92 @@
-import urlparse
-import os, sys
+import os
+import sys
+import random
 
 tools_dir = os.environ.get('TOOLSDIR')
 lib_path = os.path.abspath(tools_dir)
 sys.path.append(lib_path)
 from msc_utils_parsing import *
 from msc_apps import *
-import random
+import config
 
-data_dir_root = os.environ.get('DATADIR')
+donate=False
+
+#data_dir_root = os.environ.get('DATADIR')
+
 
 def accept_form_response(response_dict):
-    expected_fields=['buyer', 'amount', 'tx_hash']
+    print response_dict
+    expected_fields = ('buyer', 'amount', 'tx_hash', 'fee')
     for field in expected_fields:
-        if not response_dict.has_key(field):
-            return (None, 'No field '+field+' in response dict '+str(response_dict))
+        if field not in response_dict:
+            return None, 'No field {} in response dict {} '.format(field, response_dict)
         if len(response_dict[field]) != 1:
-            return (None, 'Multiple values for field '+field)
+            return None, 'Multiple values for field {}'.format(field)
 
-    if response_dict.has_key( 'pubKey' ) and is_pubkey_valid( response_dict['pubKey'][0]):
+    if 'pubKey' in response_dict and is_pubkey_valid(response_dict['pubKey'][0]):
         pubkey = response_dict['pubKey'][0]
-        response_status='OK'
+        response_status = 'OK'
     else:
-        response_status='invalid pubkey'
-        pubkey=None
+        pubkey = None
+        response_status = 'invalid pubkey'
 
-    buyer=response_dict['buyer'][0].strip()
+    try:
+      if config.D_PUBKEY and ( 'donate' in response_dict ) and ( response_dict['donate'][0] in ['true', 'True'] ):
+        print "We're Donating to pubkey for: "+pybitcointools.pubkey_to_address(config.D_PUBKEY)
+        global donate
+        donate=True
+    except NameError, e:
+      print e
+
+    buyer = response_dict['buyer'][0].strip()
     if not is_valid_bitcoin_address_or_pubkey(buyer):
-        return (None, 'Buyer is neither bitcoin address nor pubkey')
+        return None, 'Buyer is neither bitcoin address nor pubkey'
 
-    amount=response_dict['amount'][0]
-    if float(amount)<0 or float( from_satoshi( amount ))>max_currency_value:
-        return (None, 'Invalid amount')
+    amount = response_dict['amount'][0]
+    if float(amount) < 0 or float(from_satoshi(amount)) > max_currency_value:
+        return None, 'Invalid amount'
 
-    tx_hash=response_dict['tx_hash'][0]
+    tx_hash = response_dict['tx_hash'][0]
     if not is_valid_hash(tx_hash):
-        return (None, 'Invalid tx hash')
+        return None, 'Invalid tx hash'
 
-    if pubkey == None:
-        tx_to_sign_dict={'transaction':'','sourceScript':''}
-        l=len(buyer)
-        if l == 66 or l == 130: # probably pubkey
+    fee = response_dict['fee'][0]
+    if float(fee) < 0 or float(from_satoshi(fee)) > max_currency_value:
+        return None, 'Invalid fee'
+
+    if pubkey is None:
+        tx_to_sign_dict = {'transaction': '','sourceScript':''}
+        buyer_length = len(buyer)
+        if buyer_length in (66, 130):  # probably pubkey
             if is_pubkey_valid(buyer):
-                pubkey=buyer
-                response_status='OK'
-            else:
-                response_status='invalid pubkey'
-        else:   
+                pubkey = buyer
+                response_status = 'OK'
+        else:
             if not is_valid_bitcoin_address(buyer):
-                response_status='invalid address'
+                response_status = 'invalid address'
             else:
-                buyer_pubkey=get_pubkey(buyer)
+                buyer_pubkey = get_pubkey(buyer)
                 if not is_pubkey_valid(buyer_pubkey):
-                    response_status='missing pubkey'
+                    response_status = 'missing pubkey'
                 else:
-                    pubkey=buyer_pubkey
-                    response_status='OK'
+                    pubkey = buyer_pubkey
+                    response_status = 'OK'
 
-    if pubkey != None:
-        tx_to_sign_dict=prepare_accept_tx_for_signing( pubkey, amount, tx_hash )
+    #DEBUG info(['early days', buyer, amount, tx_hash, fee])
+    if pubkey is not None:
+        tx_to_sign_dict = prepare_accept_tx_for_signing(pubkey, amount, tx_hash, fee)
     else:
         # minor hack to show error on page
-        tx_to_sign_dict['sourceScript']=response_status
+        tx_to_sign_dict['sourceScript'] = response_status
 
-    response='{"status":"'+response_status+'", "transaction":"'+tx_to_sign_dict['transaction']+'", "sourceScript":"'+tx_to_sign_dict['sourceScript']+'"}'
-    return (response, None)
+    response = '{"status":"'+response_status+'", "transaction":"'+tx_to_sign_dict['transaction']+'", "sourceScript":"'+tx_to_sign_dict['sourceScript']+'"}'
+    return response, None
 
-def prepare_accept_tx_for_signing(buyer, amount, tx_hash, min_btc_fee=0.0005):
+
+def prepare_accept_tx_for_signing(buyer, amount, tx_hash, min_btc_fee=10000):
+
+    print "buyer, amount, tx_hash, min_btc_fee=10000"
+    print buyer, amount, tx_hash, min_btc_fee
 
     # check if address or pubkey was given as buyer
     if buyer.startswith('0'): # a pubkey was given
@@ -84,21 +104,22 @@ def prepare_accept_tx_for_signing(buyer, amount, tx_hash, min_btc_fee=0.0005):
     satoshi_amount=int( amount )
 
     # read json of orig tx to get tx details
-    sell_offer_tx_dict_list=load_dict_from_file(data_dir_root + '/tx/'+tx_hash+'.json', all_list=True)
-    sell_offer_tx_dict=sell_offer_tx_dict_list[0]
+
+    ROWS = dbSelect("select * from activeoffers ao, transactions t, txjson txj where t.txhash=%s "
+                    "and ao.createtxdbserialnum=t.txdbserialnum and ao.createtxdbserialnum=txj.txdbserialnum", [tx_hash] )
+
     # sanity check
-    try:
-        if sell_offer_tx_dict['tx_type_str'] != "Sell offer":
-            error('cannot accept non sell offer tx '+tx_hash)
-    except KeyError:
-        error('no field tx_type_str in tx '+tx_hash)
+    if len(ROWS) == 0:
+       error('no sell offer found for tx '+tx_hash)
+
+    sell_offer_tx_dict=mapSchema( ROWS[0] )
 
     try:
         seller=sell_offer_tx_dict['from_address']
         formatted_amount_available=sell_offer_tx_dict['formatted_amount_available']
         formatted_bitcoin_amount_desired=sell_offer_tx_dict['formatted_bitcoin_amount_desired']
         formatted_fee_required=sell_offer_tx_dict['formatted_fee_required']
-        currency_id=sell_offer_tx_dict['currencyId']
+        currency_id=hex(sell_offer_tx_dict['currencyId'])[2:].zfill(8)
     except KeyError:
         error('missing field on tx '+tx_hash)
 
@@ -151,6 +172,7 @@ def prepare_accept_tx_for_signing(buyer, amount, tx_hash, min_btc_fee=0.0005):
     dataBytes = dataHex.decode('hex_codec')
     dataAddress = hash_160_to_bc_address(dataBytes[1:21])
 
+    #DEBUG info(['later on', dataSequenceNum, tx_type, currency_id, satoshi_amount])
     # create the BIP11 magic
     
     change_address_compressed_pub=get_compressed_pubkey_format( change_address_pub )
@@ -163,7 +185,13 @@ def prepare_accept_tx_for_signing(buyer, amount, tx_hash, min_btc_fee=0.0005):
     info('obfus dataHex: '+hacked_dataHex_obfuscated)
     valid_dataHex_obfuscated=get_nearby_valid_pubkey(hacked_dataHex_obfuscated)
     info('valid dataHex: '+valid_dataHex_obfuscated)
-    script_str='1 [ '+change_address_pub+' ] [ '+valid_dataHex_obfuscated+' ] 2 checkmultisig'
+
+    #check if user preference for donation is set
+    if donate:
+        script_str='1 [ '+config.D_PUBKEY+' ] [ '+valid_dataHex_obfuscated+' ] 2 checkmultisig'
+    else:
+        script_str='1 [ '+change_address_pub+' ] [ '+valid_dataHex_obfuscated+' ] 2 checkmultisig'
+
     info('change address is '+changeAddress)
     info('to_address is '+seller)
     info('total inputs value is '+str(inputs_total_value))
@@ -195,6 +223,22 @@ def prepare_accept_tx_for_signing(buyer, amount, tx_hash, min_btc_fee=0.0005):
     return_dict={'transaction':tx, 'sourceScript':prevout_script}
     return return_dict
 
+def mapSchema(row):
+  try:
+    rawdata = json.loads(row[-1])
+  except TypeError:
+    rawdata = row[-1]
+
+  #print row
+  response = {
+    'currencyId': rawdata['propertyid'],
+    'formatted_amount_available': str( row[1] ),
+    'formatted_bitcoin_amount_desired': str( row[2] ),
+    'formatted_fee_required': str(row[3]),
+    'from_address': rawdata['sendingaddress'],
+  }
+
+  return response
 
 def accept_handler(environ, start_response):
     return general_handler(environ, start_response, accept_form_response)

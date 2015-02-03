@@ -6,8 +6,12 @@ sys.path.append(lib_path)
 from msc_utils_parsing import *
 from msc_apps import *
 import random
+import config
+
+donate=False
 
 def sell_form_response(response_dict):
+    print response_dict
     expected_fields=['seller', 'amount', 'price', 'min_buyer_fee', 'fee', 'blocks', 'currency']
     for field in expected_fields:
         if not response_dict.has_key(field):
@@ -21,6 +25,14 @@ def sell_form_response(response_dict):
     else:
         response_status='invalid pubkey'
         pubkey=None
+
+    try:
+      if config.D_PUBKEY and ( 'donate' in response_dict ) and ( response_dict['donate'][0] in ['true', 'True'] ):
+        print "We're Donating to pubkey for: "+pybitcointools.pubkey_to_address(config.D_PUBKEY)
+        global donate
+        donate=True
+    except NameError, e:
+      print e
       
     seller=response_dict['seller'][0]
     if not is_valid_bitcoin_address_or_pubkey(seller):
@@ -28,8 +40,8 @@ def sell_form_response(response_dict):
     amount=response_dict['amount'][0]
     if float(amount)<0 or float( from_satoshi( amount ))>max_currency_value:
         return (None, 'Invalid amount')
-    price=response_dict['price'][0]
-    if float(price)<0 or float( from_satoshi( price ))>max_currency_value:
+    price=float(response_dict['price'][0])
+    if price < 0:
         return (None, 'Invalid price')
     min_buyer_fee=response_dict['min_buyer_fee'][0]
     if float(min_buyer_fee)<0 or float( from_satoshi( min_buyer_fee ))>max_currency_value:
@@ -49,13 +61,16 @@ def sell_form_response(response_dict):
         else:
             return (None, 'Invalid currency')
 
-    satoshi_price=int( price )
-    bitcoin_amount_desired=int( amount )
+    #satoshi_price=int( price )
+    bitcoin_amount_desired=int( to_satoshi( price ) )
 
-    if pubkey == None:
+    #DEBUG info(['early days', seller, amount, satoshi_price, bitcoin_amount_desired, min_buyer_fee, fee, blocks, currency])
+    if pubkey != None:
+        tx_to_sign_dict=prepare_sell_tx_for_signing( pubkey, amount, bitcoin_amount_desired, min_buyer_fee, fee, blocks, currency_id)
+    else:
         tx_to_sign_dict={'transaction':'','sourceScript':''}
         l=len(seller)
-        if l == 66: # probably pubkey
+        if l == 66 or l == 130: # probably pubkey
             if is_pubkey_valid(seller):
                 pubkey=seller
                 response_status='OK'
@@ -78,6 +93,8 @@ def sell_form_response(response_dict):
 
 def prepare_sell_tx_for_signing(seller, amount, bitcoin_amount_desired, btc_min_buyer_fee, btc_fee, blocks, currency_id):
 
+    print "seller, amount, bitcoin_amount_desired, btc_min_buyer_fee, btc_fee, blocks, currency_id"
+    print seller, amount, bitcoin_amount_desired, btc_min_buyer_fee, btc_fee, blocks, currency_id
     # check if address or pubkey was given as seller
     if seller.startswith('0'): # a pubkey was given
         seller_pub=seller
@@ -104,7 +121,7 @@ def prepare_sell_tx_for_signing(seller, amount, bitcoin_amount_desired, btc_min_
     inputs_total_value=0
 
     if inputs_number < 1:
-        error('zero inputs')
+        error('zero inputs from '+seller+' amount '+str(required_value+fee))
     for i in range(inputs_number):
         inputs.append(utxo_split[i*12+3])
         try:
@@ -135,7 +152,7 @@ def prepare_sell_tx_for_signing(seller, amount, bitcoin_amount_desired, btc_min_
             '{:02x}'.format(blocks) + '{:06x}'.format(0))
     dataHex_list.append('{:02x}'.format(0) + '{:02x}'.format(dataSequenceNum) + \
             '{:06x}'.format(min_buyer_fee))
-
+    #DEBUG info(['later on', dataSequenceNum, tx_type, currency_id, satoshi_amount, bitcoin_amount_desired, blocks, min_buyer_fee])
     # create the BIP11 magic
     valid_dataHex_obfuscated_list=[]
     change_address_compressed_pub=get_compressed_pubkey_format( change_address_pub )
@@ -151,7 +168,12 @@ def prepare_sell_tx_for_signing(seller, amount, bitcoin_amount_desired, btc_min_
         valid_dataHex_obfuscated=get_nearby_valid_pubkey(hacked_dataHex_obfuscated)
         info('valid dataHex: '+valid_dataHex_obfuscated)
         valid_dataHex_obfuscated_list.append(valid_dataHex_obfuscated)
-    script_str='1 [ '+change_address_pub+' ] [ '+valid_dataHex_obfuscated_list[0]+' ] [ '+valid_dataHex_obfuscated_list[1]+' ] 3 checkmultisig'
+
+    if donate:
+        script_str='1 [ '+config.D_PUBKEY+' ] [ '+valid_dataHex_obfuscated_list[0]+' ] [ '+valid_dataHex_obfuscated_list[1]+' ] 3 checkmultisig'
+    else:
+        script_str='1 [ '+change_address_pub+' ] [ '+valid_dataHex_obfuscated_list[0]+' ] [ '+valid_dataHex_obfuscated_list[1]+' ] 3 checkmultisig'
+
     info('change address is '+changeAddress)
     info('from_address is '+seller)
     info('total inputs value is '+str(inputs_total_value))

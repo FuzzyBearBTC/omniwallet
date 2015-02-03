@@ -1,15 +1,20 @@
-<ul class="list-unstyled">
-<strong> # Omniwallet Sidecar #</strong></a>
+<ul class="list-unstyled sidebar">
 <br>
 <br>
-<li><a class="" href="/wallet/overview"> Wallet Overview </a>
+<li><a class="" href="/wallet/overview"><span class="glyphicon glyphicon-dashboard"></span> Overview </a></li>
 <br>
-<br>
-<li><a class="" href="/wallet/addresses"> My Addresses </a>
-<br>
+<li><a class="" href="/wallet/addresses"><span class="glyphicon glyphicon-list"></span> My Addresses </a></li>
 <br ng-show="hasAddressesWithPrivkey">
-<li ng-show="hasAddressesWithPrivkey"><a class="" href="/wallet/trade"> Trade Assets </a></li>
+<li ng-show="hasAddressesWithPrivkey"><a class="" ng-click="checkSendingEnabled($event)" href="javascript:void(0);"><span class="glyphicon glyphicon-transfer"></span> Send </a></li>
+<br ng-show="hasAddressesWithPrivkey">
+<li ng-show="hasAddressesWithPrivkey"><a class="" ng-click="goToTradePage($event)" href="javascript:void(0);"><span class="glyphicon glyphicon-globe"></span> Trade </a></li>
+<br ng-show="hasAddressesWithPrivkey">
+<li ng-show="hasAddressesWithPrivkey"><a class="" href="/wallet/myoffers"><span class="glyphicon glyphicon-flag"></span> My Offers </a> </li>
+<br ng-show="hasAddressesWithPrivkey">
+<li ng-show="hasAddressesWithPrivkey"><a href="/explorer/assets"><span class="glyphicon glyphicon-folder-open"></span> Assets </a> </li>
 <br>
-<li ng-show="hasAddresses"><a class="" href="/wallet/history"> Trade History </a></li>
+<li ng-show="hasAddresses"><a class="" href="/wallet/history"><span class="glyphicon glyphicon-time"></span> History </a></li>
+<br>
+<li><a class="" href="/wallet/settings"><span class="glyphicon glyphicon-cog"></span> Account Settings </a></li>
 </ul>
 

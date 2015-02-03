@@ -45,10 +45,12 @@ def send_form_response(response_dict):
             currency_id=2
         else:
             if currency=='BTC':
-                # this is a non mastercoin protocol currency
                 currency_id=0
             else:
-                return (None, 'Invalid currency')
+                if currency[:2] == 'SP':
+                    currency_id=int(currency[2:])
+                else:
+                    return (None, 'Invalid currency')
 
     marker_addr=None
     try:
@@ -79,15 +81,17 @@ def send_form_response(response_dict):
                     pubkey=from_pubkey
                     response_status='OK'
 
-    if pubkey != None:
-        tx_to_sign_dict=prepare_send_tx_for_signing( pubkey, to_addr, marker_addr, currency_id, amount, btc_fee)
-    else:
-        # hack to show error on page
-        tx_to_sign_dict['sourceScript']=response_status
+    try:
+      if pubkey != None:
+          tx_to_sign_dict=prepare_send_tx_for_signing( pubkey, to_addr, marker_addr, currency_id, amount, btc_fee)
+      else:
+          # hack to show error on page
+          tx_to_sign_dict['sourceScript']=response_status
 
-    response='{"status":"'+response_status+'", "transaction":"'+tx_to_sign_dict['transaction']+'", "sourceScript":"'+tx_to_sign_dict['sourceScript']+'"}'
-
-    return (response, None)
+      response='{"status":"'+response_status+'", "transaction":"'+tx_to_sign_dict['transaction']+'", "sourceScript":"'+tx_to_sign_dict['sourceScript']+'"}'
+      return (response, None)
+    except Exception as e:
+      return (None, str(e))
 
 
 # simple send and bitcoin send (with or without marker)
@@ -132,13 +136,15 @@ def prepare_send_tx_for_signing(from_address, to_address, marker_address, curren
     inputs_total_value=0
 
     if inputs_number < 1:
-        error('zero inputs')
+        info('Error not enough BTC to generate tx - no inputs')
+        raise Exception('This address must have enough BTC for protocol transaction fees and miner fees')
     for i in range(inputs_number):
         inputs.append(utxo_split[i*12+3])
         try:
             inputs_total_value += int(utxo_split[i*12+7])
         except ValueError:
-            error('error parsing value from '+utxo_split[i*12+7])
+            info('Error parsing utxo, '+ str(utxo_split) )
+            raise Exception('Error: parsing inputs was invalid, do you have enough BTC?')
 
     inputs_outputs='/dev/stdout'
     for i in inputs:
@@ -147,7 +153,8 @@ def prepare_send_tx_for_signing(from_address, to_address, marker_address, curren
     # calculate change
     change_value=inputs_total_value-required_value-fee
     if change_value < 0:
-        error ('negative change value')
+        info('Error not enough BTC to generate tx - negative change')
+        raise Exception('This address must have enough BTC for miner fees and protocol transaction fees')
 
     if currency_id == 0: # bitcoin
         # create a normal bitcoin transaction (not mastercoin)
