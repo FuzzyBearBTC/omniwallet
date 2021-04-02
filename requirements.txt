@@ -1,5 +1,5 @@
-ecdsa==0.10
+ecdsa==0.14
 pycoin==0.25
-flask==0.10
+flask==0.12.3
 simplekv==0.8.4
 bcrypt==1.0.2
