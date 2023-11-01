@@ -3,3 +3,4 @@ pycoin==0.25
 flask==0.10
 simplekv==0.8.4
 bcrypt==1.0.2
+werkzeug>=3.0.1 # not directly required, pinned by Snyk to avoid a vulnerability
